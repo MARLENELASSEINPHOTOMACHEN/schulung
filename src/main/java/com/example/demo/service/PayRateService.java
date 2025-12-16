@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,11 +22,18 @@ public class PayRateService {
     }
 
     public Optional<PayRate> getCurrentPayRate(UUID employeeId) {
-        return payRateRepository.findFirstByEmployeeIdAndValidFromLessThanEqualOrderByValidFromDesc(
+        return payRateRepository.findFirstByEmployeeIdAndValidFromLessThanEqualAndDeletedAtIsNullOrderByValidFromDesc(
                 employeeId, LocalDate.now());
     }
 
     public List<PayRate> getPayRateHistory(UUID employeeId) {
-        return payRateRepository.findByEmployeeIdOrderByValidFromDesc(employeeId);
+        return payRateRepository.findByEmployeeIdAndDeletedAtIsNullOrderByValidFromDesc(employeeId);
+    }
+
+    public void softDeleteByEmployeeId(UUID employeeId) {
+        List<PayRate> payRates = payRateRepository.findByEmployeeId(employeeId);
+        LocalDateTime now = LocalDateTime.now();
+        payRates.forEach(payRate -> payRate.setDeletedAt(now));
+        payRateRepository.saveAll(payRates);
     }
 }

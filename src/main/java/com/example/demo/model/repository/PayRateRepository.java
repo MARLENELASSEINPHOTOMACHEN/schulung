@@ -9,8 +9,10 @@ import java.util.UUID;
 
 public interface PayRateRepository extends JpaRepository<PayRate, UUID> {
 
-    List<PayRate> findByEmployeeIdOrderByValidFromDesc(UUID employeeId);
+    List<PayRate> findByEmployeeIdAndDeletedAtIsNullOrderByValidFromDesc(UUID employeeId);
 
-    Optional<PayRate> findFirstByEmployeeIdAndValidFromLessThanEqualOrderByValidFromDesc(
+    Optional<PayRate> findFirstByEmployeeIdAndValidFromLessThanEqualAndDeletedAtIsNullOrderByValidFromDesc(
             UUID employeeId, LocalDate date);
+
+    List<PayRate> findByEmployeeId(UUID employeeId);
 }

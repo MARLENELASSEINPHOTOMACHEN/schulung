@@ -43,6 +43,27 @@
 <body>
     <h1>Zeiterfassung - Time Tracking Test UI</h1>
 
+    <!-- Database Viewer Section -->
+    <div class="card" style="background: #1e1e1e; color: #d4d4d4;">
+        <h3 style="color: #fff; margin-bottom: 15px;">Database Viewer (Local Profile Only)
+            <button onclick="loadDatabase()" style="margin-left: 15px; padding: 5px 15px;">Refresh</button>
+        </h3>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px;">
+                <h4 style="color: #569cd6; margin: 0 0 10px 0;">Time Entries</h4>
+                <div id="db-time-entries" style="font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; background: #252526; padding: 10px; border-radius: 4px;">
+                    Click Refresh to load...
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 300px;">
+                <h4 style="color: #569cd6; margin: 0 0 10px 0;">Pay Rates</h4>
+                <div id="db-pay-rates" style="font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; background: #252526; padding: 10px; border-radius: 4px;">
+                    Click Refresh to load...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Authentication Section -->
     <div class="card">
         <h3>Authentication Mode</h3>
@@ -132,6 +153,25 @@
         <input type="text" id="deleteEntryId" placeholder="Enter time entry ID">
         <button class="danger" id="btn-delete">Delete Entry</button>
         <div id="delete-result" class="result">Response will appear here...</div>
+    </div>
+
+    <hr>
+    <h2>Simulate RabbitMQ Events (Local Profile Only)</h2>
+
+    <div class="card">
+        <h3>Simulate Employee Deleted</h3>
+        <p style="color: #666; font-size: 13px;">Soft deletes all time entries and pay rates for the employee</p>
+        <button class="danger" id="btn-simulate-deleted">Simulate Employee Deleted</button>
+        <div id="simulate-deleted-result" class="result">Response will appear here...</div>
+    </div>
+
+    <div class="card">
+        <h3>Simulate Employee Updated</h3>
+        <p style="color: #666; font-size: 13px;">Updates the employee's pay rate (as if received from HR system)</p>
+        <label for="simulateHourlyWage">New Hourly Wage</label>
+        <input type="number" id="simulateHourlyWage" step="0.01" placeholder="e.g., 30.00" value="30.00">
+        <button class="warning" id="btn-simulate-updated">Simulate Employee Updated</button>
+        <div id="simulate-updated-result" class="result">Response will appear here...</div>
     </div>
 
     <hr>
@@ -400,6 +440,66 @@
             const empId = document.getElementById('employeeId').value;
             apiCall('GET', `/api/v1/pay-rates/${empId}/history`, null, 'rate-history-result');
         });
+
+        document.getElementById('btn-simulate-deleted').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            if (confirm(`Are you sure you want to simulate deletion of employee ${empId}? This will soft-delete all their time entries and pay rates.`)) {
+                apiCall('POST', `/api/v1/test/events/employee-deleted/${empId}`, null, 'simulate-deleted-result');
+            }
+        });
+
+        document.getElementById('btn-simulate-updated').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            const hourlyWage = document.getElementById('simulateHourlyWage').value;
+            apiCall('POST', `/api/v1/test/events/employee-updated/${empId}?hourlyWage=${hourlyWage}`, null, 'simulate-updated-result');
+        });
+
+        // Database viewer
+        async function loadDatabase() {
+            try {
+                const response = await fetch('/api/v1/test/database');
+                const data = await response.json();
+
+                const timeEntriesDiv = document.getElementById('db-time-entries');
+                const payRatesDiv = document.getElementById('db-pay-rates');
+
+                if (data.timeEntries && data.timeEntries.length > 0) {
+                    timeEntriesDiv.innerHTML = data.timeEntries.map(e => {
+                        const deleted = e.deletedAt ? `<span style="color: #f44;">DELETED ${e.deletedAt}</span>` : '<span style="color: #4f4;">active</span>';
+                        return `<div style="margin-bottom: 8px; padding: 5px; background: #333; border-radius: 3px;">
+                            <div><span style="color: #9cdcfe;">ID:</span> ${e.id}</div>
+                            <div><span style="color: #9cdcfe;">Employee:</span> ${e.employeeId}</div>
+                            <div><span style="color: #9cdcfe;">Clock In:</span> ${e.clockIn}</div>
+                            <div><span style="color: #9cdcfe;">Clock Out:</span> ${e.clockOut || '-'}</div>
+                            <div><span style="color: #9cdcfe;">Status:</span> ${deleted}</div>
+                        </div>`;
+                    }).join('');
+                } else {
+                    timeEntriesDiv.innerHTML = '<span style="color: #888;">No time entries</span>';
+                }
+
+                if (data.payRates && data.payRates.length > 0) {
+                    payRatesDiv.innerHTML = data.payRates.map(p => {
+                        const deleted = p.deletedAt ? `<span style="color: #f44;">DELETED ${p.deletedAt}</span>` : '<span style="color: #4f4;">active</span>';
+                        return `<div style="margin-bottom: 8px; padding: 5px; background: #333; border-radius: 3px;">
+                            <div><span style="color: #9cdcfe;">ID:</span> ${p.id}</div>
+                            <div><span style="color: #9cdcfe;">Employee:</span> ${p.employeeId}</div>
+                            <div><span style="color: #9cdcfe;">Hourly Wage:</span> ${p.hourlyWage}</div>
+                            <div><span style="color: #9cdcfe;">Valid From:</span> ${p.validFrom}</div>
+                            <div><span style="color: #9cdcfe;">Status:</span> ${deleted}</div>
+                        </div>`;
+                    }).join('');
+                } else {
+                    payRatesDiv.innerHTML = '<span style="color: #888;">No pay rates</span>';
+                }
+            } catch (error) {
+                document.getElementById('db-time-entries').innerHTML = '<span style="color: #f44;">Error: ' + error.message + '</span>';
+                document.getElementById('db-pay-rates').innerHTML = '<span style="color: #f44;">Error: ' + error.message + '</span>';
+            }
+        }
+
+        // Load database on page load
+        loadDatabase();
     </script>
 </body>
 </html>

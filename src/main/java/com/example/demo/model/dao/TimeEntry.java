@@ -24,6 +24,8 @@ public class TimeEntry {
 
     private LocalDateTime clockOut;
 
+    private LocalDateTime deletedAt;
+
     public TimeEntry(UUID employeeId) {
         this.employeeId = employeeId;
         this.clockIn = LocalDateTime.now();

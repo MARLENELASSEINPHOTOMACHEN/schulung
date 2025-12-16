@@ -8,9 +8,13 @@ import java.util.UUID;
 
 public interface TimeEntryRepository extends JpaRepository<TimeEntry, UUID> {
 
+    List<TimeEntry> findByEmployeeIdAndDeletedAtIsNull(UUID employeeId);
+
+    Optional<TimeEntry> findByEmployeeIdAndClockOutIsNullAndDeletedAtIsNull(UUID employeeId);
+
+    List<TimeEntry> findByEmployeeIdAndDeletedAtIsNullOrderByClockInDesc(UUID employeeId);
+
+    List<TimeEntry> findAllByDeletedAtIsNull();
+
     List<TimeEntry> findByEmployeeId(UUID employeeId);
-
-    Optional<TimeEntry> findByEmployeeIdAndClockOutIsNull(UUID employeeId);
-
-    List<TimeEntry> findByEmployeeIdOrderByClockInDesc(UUID employeeId);
 }

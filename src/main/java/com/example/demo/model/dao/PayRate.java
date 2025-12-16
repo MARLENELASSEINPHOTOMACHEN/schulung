@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -25,6 +26,8 @@ public class PayRate {
 
     @Column(nullable = false)
     private LocalDate validFrom;
+
+    private LocalDateTime deletedAt;
 
     public PayRate(UUID employeeId, BigDecimal hourlyWage, LocalDate validFrom) {
         this.employeeId = employeeId;

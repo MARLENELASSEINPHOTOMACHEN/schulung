@@ -30,15 +30,22 @@ public class TimeEntryService {
     }
 
     public Optional<TimeEntry> getCurrentEntry(UUID employeeId) {
-        return timeEntryRepository.findByEmployeeIdAndClockOutIsNull(employeeId);
+        return timeEntryRepository.findByEmployeeIdAndClockOutIsNullAndDeletedAtIsNull(employeeId);
     }
 
     public List<TimeEntry> getEntriesForEmployee(UUID employeeId) {
-        return timeEntryRepository.findByEmployeeIdOrderByClockInDesc(employeeId);
+        return timeEntryRepository.findByEmployeeIdAndDeletedAtIsNullOrderByClockInDesc(employeeId);
     }
 
     public List<TimeEntry> getAllEntries() {
-        return timeEntryRepository.findAll();
+        return timeEntryRepository.findAllByDeletedAtIsNull();
+    }
+
+    public void softDeleteByEmployeeId(UUID employeeId) {
+        List<TimeEntry> entries = timeEntryRepository.findByEmployeeId(employeeId);
+        LocalDateTime now = LocalDateTime.now();
+        entries.forEach(entry -> entry.setDeletedAt(now));
+        timeEntryRepository.saveAll(entries);
     }
 
     public Optional<TimeEntry> getEntry(UUID id) {
