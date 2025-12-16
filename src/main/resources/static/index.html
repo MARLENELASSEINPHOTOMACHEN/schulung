@@ -45,36 +45,51 @@
 
     <!-- Authentication Section -->
     <div class="card">
-        <h3>Keycloak Authentication</h3>
-        <div id="auth-status" class="auth-status logged-out">Not authenticated</div>
-
-        <div id="login-form">
-            <div class="inline-form">
-                <div>
-                    <label for="username">Username</label>
-                    <input type="text" id="username" value="testuser" placeholder="Username">
-                </div>
-                <div>
-                    <label for="password">Password</label>
-                    <input type="password" id="password" value="testpass" placeholder="Password">
-                </div>
-                <div>
-                    <button class="success" onclick="login()">Login</button>
-                </div>
-            </div>
+        <h3>Authentication Mode</h3>
+        <div style="margin-bottom: 15px;">
+            <label style="display: inline; margin-right: 20px;">
+                <input type="radio" name="authMode" value="none" checked onchange="setAuthMode('none')"> No Auth (security disabled)
+            </label>
+            <label style="display: inline;">
+                <input type="radio" name="authMode" value="keycloak" onchange="setAuthMode('keycloak')"> Keycloak
+            </label>
         </div>
 
-        <div id="logout-section" style="display: none;">
-            <button class="danger" onclick="logout()">Logout</button>
-            <button onclick="refreshToken()">Refresh Token</button>
-            <div class="token-info">
-                <strong>User:</strong> <span id="token-user">-</span> |
-                <strong>Roles:</strong> <span id="token-roles">-</span> |
-                <strong>Expires:</strong> <span id="token-expires">-</span>
-            </div>
+        <div id="no-auth-info" class="auth-status logged-in">
+            Security disabled - all endpoints accessible without authentication
         </div>
 
-        <div id="login-result" class="result" style="display: none;"></div>
+        <div id="keycloak-section" style="display: none;">
+            <div id="auth-status" class="auth-status logged-out">Not authenticated</div>
+
+            <div id="login-form">
+                <div class="inline-form">
+                    <div>
+                        <label for="username">Username</label>
+                        <input type="text" id="username" value="testuser" placeholder="Username">
+                    </div>
+                    <div>
+                        <label for="password">Password</label>
+                        <input type="password" id="password" value="testpass" placeholder="Password">
+                    </div>
+                    <div>
+                        <button class="success" onclick="login()">Login</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="logout-section" style="display: none;">
+                <button class="danger" onclick="logout()">Logout</button>
+                <button onclick="refreshToken()">Refresh Token</button>
+                <div class="token-info">
+                    <strong>User:</strong> <span id="token-user">-</span> |
+                    <strong>Roles:</strong> <span id="token-roles">-</span> |
+                    <strong>Expires:</strong> <span id="token-expires">-</span>
+                </div>
+            </div>
+
+            <div id="login-result" class="result" style="display: none;"></div>
+        </div>
     </div>
 
     <div class="card">
@@ -153,6 +168,23 @@
         let accessToken = null;
         let refreshTokenValue = null;
         let tokenExpiry = null;
+        let authMode = 'none';
+
+        // Toggle auth mode
+        function setAuthMode(mode) {
+            authMode = mode;
+            const noAuthInfo = document.getElementById('no-auth-info');
+            const keycloakSection = document.getElementById('keycloak-section');
+
+            if (mode === 'none') {
+                noAuthInfo.style.display = 'block';
+                keycloakSection.style.display = 'none';
+                accessToken = null;
+            } else {
+                noAuthInfo.style.display = 'none';
+                keycloakSection.style.display = 'block';
+            }
+        }
 
         // Set default effective date to today
         document.getElementById('effectiveDate').valueAsDate = new Date();
