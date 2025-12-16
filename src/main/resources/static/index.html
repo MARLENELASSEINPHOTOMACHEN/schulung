@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeiterfassung - Time Tracking</title>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 30px; }
+        h3 { margin-top: 0; }
+        .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #444; }
+        input, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 10px; margin-bottom: 10px; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #c82333; }
+        button.success { background: #28a745; }
+        button.success:hover { background: #1e7e34; }
+        button.warning { background: #ffc107; color: #333; }
+        button.warning:hover { background: #e0a800; }
+        .result { background: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 4px; margin-top: 15px; min-height: 50px; white-space: pre-wrap; font-family: monospace; font-size: 13px; overflow-x: auto; }
+        .flex { display: flex; gap: 10px; flex-wrap: wrap; }
+        .flex > * { flex: 1; min-width: 200px; }
+        .htmx-request { opacity: 0.5; }
+        hr { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+        .auth-status { padding: 10px 15px; border-radius: 4px; margin-bottom: 15px; font-weight: 600; }
+        .auth-status.logged-out { background: #f8d7da; color: #721c24; }
+        .auth-status.logged-in { background: #d4edda; color: #155724; }
+        .token-info { font-size: 12px; color: #666; margin-top: 5px; }
+        .small-input { width: auto; display: inline-block; margin-right: 10px; }
+        .inline-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+        .inline-form > div { flex: 1; min-width: 150px; }
+        .inline-form > div:last-child { flex: 0; }
+        .inline-form label { margin-bottom: 5px; }
+        .inline-form input { margin-bottom: 0; }
+    </style>
+</head>
+<body>
+    <h1>Zeiterfassung - Time Tracking Test UI</h1>
+
+    <!-- Authentication Section -->
+    <div class="card">
+        <h3>Keycloak Authentication</h3>
+        <div id="auth-status" class="auth-status logged-out">Not authenticated</div>
+
+        <div id="login-form">
+            <div class="inline-form">
+                <div>
+                    <label for="username">Username</label>
+                    <input type="text" id="username" value="testuser" placeholder="Username">
+                </div>
+                <div>
+                    <label for="password">Password</label>
+                    <input type="password" id="password" value="testpass" placeholder="Password">
+                </div>
+                <div>
+                    <button class="success" onclick="login()">Login</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="logout-section" style="display: none;">
+            <button class="danger" onclick="logout()">Logout</button>
+            <button onclick="refreshToken()">Refresh Token</button>
+            <div class="token-info">
+                <strong>User:</strong> <span id="token-user">-</span> |
+                <strong>Roles:</strong> <span id="token-roles">-</span> |
+                <strong>Expires:</strong> <span id="token-expires">-</span>
+            </div>
+        </div>
+
+        <div id="login-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="card">
+        <label for="employeeId">Employee ID (used for all requests below)</label>
+        <input type="text" id="employeeId" name="employeeId" value="emp-001" placeholder="Enter employee ID">
+    </div>
+
+    <h2>Time Entries</h2>
+
+    <div class="card">
+        <h3>Clock In / Clock Out</h3>
+        <div class="flex">
+            <button class="success" id="btn-clock-in">Clock In</button>
+            <button class="warning" id="btn-clock-out">Clock Out</button>
+        </div>
+        <div id="clock-result" class="result">Response will appear here...</div>
+    </div>
+
+    <div class="card">
+        <h3>Get Current Active Entry</h3>
+        <button id="btn-current">Get Current Entry</button>
+        <div id="current-result" class="result">Response will appear here...</div>
+    </div>
+
+    <div class="card">
+        <h3>Get Employee Time Entry History</h3>
+        <button id="btn-history">Get History</button>
+        <div id="history-result" class="result">Response will appear here...</div>
+    </div>
+
+    <div class="card">
+        <h3>Get All Time Entries (Manager/Admin)</h3>
+        <button id="btn-all-entries">Get All Entries</button>
+        <div id="all-entries-result" class="result">Response will appear here...</div>
+    </div>
+
+    <div class="card">
+        <h3>Delete Time Entry (Admin)</h3>
+        <label for="deleteEntryId">Time Entry ID to Delete</label>
+        <input type="text" id="deleteEntryId" placeholder="Enter time entry ID">
+        <button class="danger" id="btn-delete">Delete Entry</button>
+        <div id="delete-result" class="result">Response will appear here...</div>
+    </div>
+
+    <hr>
+    <h2>Pay Rates</h2>
+
+    <div class="card">
+        <h3>Set Pay Rate (Admin)</h3>
+        <label for="hourlyRate">Hourly Rate</label>
+        <input type="number" id="hourlyRate" step="0.01" placeholder="e.g., 25.50" value="25.00">
+        <label for="effectiveDate">Effective Date</label>
+        <input type="date" id="effectiveDate">
+        <button id="btn-set-rate">Set Pay Rate</button>
+        <div id="set-rate-result" class="result">Response will appear here...</div>
+    </div>
+
+    <div class="card">
+        <h3>Get Current Pay Rate</h3>
+        <button id="btn-current-rate">Get Current Rate</button>
+        <div id="current-rate-result" class="result">Response will appear here...</div>
+    </div>
+
+    <div class="card">
+        <h3>Get Pay Rate History</h3>
+        <button id="btn-rate-history">Get Rate History</button>
+        <div id="rate-history-result" class="result">Response will appear here...</div>
+    </div>
+
+    <script>
+        // Keycloak configuration
+        const KEYCLOAK_URL = 'http://localhost:8080';
+        const REALM = 'zeiterfassung';
+        const CLIENT_ID = 'zeiterfassung-app';
+
+        let accessToken = null;
+        let refreshTokenValue = null;
+        let tokenExpiry = null;
+
+        // Set default effective date to today
+        document.getElementById('effectiveDate').valueAsDate = new Date();
+
+        // Login function
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('login-result');
+
+            resultDiv.style.display = 'block';
+            resultDiv.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch(`${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        grant_type: 'password',
+                        client_id: CLIENT_ID,
+                        username: username,
+                        password: password,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    accessToken = data.access_token;
+                    refreshTokenValue = data.refresh_token;
+                    tokenExpiry = new Date(Date.now() + data.expires_in * 1000);
+
+                    updateAuthUI(true);
+                    resultDiv.textContent = 'Login successful!';
+                    setTimeout(() => { resultDiv.style.display = 'none'; }, 2000);
+                } else {
+                    resultDiv.textContent = 'Login failed: ' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                resultDiv.textContent = 'Login error: ' + error.message;
+            }
+        }
+
+        // Refresh token function
+        async function refreshToken() {
+            if (!refreshTokenValue) {
+                alert('No refresh token available');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        grant_type: 'refresh_token',
+                        client_id: CLIENT_ID,
+                        refresh_token: refreshTokenValue,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    accessToken = data.access_token;
+                    refreshTokenValue = data.refresh_token;
+                    tokenExpiry = new Date(Date.now() + data.expires_in * 1000);
+                    updateAuthUI(true);
+                    alert('Token refreshed!');
+                } else {
+                    alert('Refresh failed: ' + data.error_description);
+                    logout();
+                }
+            } catch (error) {
+                alert('Refresh error: ' + error.message);
+            }
+        }
+
+        // Logout function
+        function logout() {
+            accessToken = null;
+            refreshTokenValue = null;
+            tokenExpiry = null;
+            updateAuthUI(false);
+        }
+
+        // Update UI based on auth state
+        function updateAuthUI(loggedIn) {
+            const statusDiv = document.getElementById('auth-status');
+            const loginForm = document.getElementById('login-form');
+            const logoutSection = document.getElementById('logout-section');
+
+            if (loggedIn) {
+                statusDiv.className = 'auth-status logged-in';
+                statusDiv.textContent = 'Authenticated';
+                loginForm.style.display = 'none';
+                logoutSection.style.display = 'block';
+
+                // Decode token to show info
+                try {
+                    const payload = JSON.parse(atob(accessToken.split('.')[1]));
+                    document.getElementById('token-user').textContent = payload.preferred_username || payload.sub;
+
+                    // Extract roles from realm_access and resource_access
+                    const roles = [];
+                    if (payload.realm_access && payload.realm_access.roles) {
+                        roles.push(...payload.realm_access.roles.filter(r => !r.startsWith('default-')));
+                    }
+                    if (payload.resource_access && payload.resource_access[CLIENT_ID]) {
+                        roles.push(...payload.resource_access[CLIENT_ID].roles);
+                    }
+                    document.getElementById('token-roles').textContent = roles.join(', ') || 'none';
+                    document.getElementById('token-expires').textContent = tokenExpiry.toLocaleTimeString();
+                } catch (e) {
+                    console.error('Error decoding token', e);
+                }
+            } else {
+                statusDiv.className = 'auth-status logged-out';
+                statusDiv.textContent = 'Not authenticated';
+                loginForm.style.display = 'block';
+                logoutSection.style.display = 'none';
+            }
+        }
+
+        // Helper function to make authenticated API calls
+        async function apiCall(method, url, body = null, resultElementId) {
+            const resultDiv = document.getElementById(resultElementId);
+            resultDiv.textContent = 'Loading...';
+
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+
+            if (accessToken) {
+                headers['Authorization'] = 'Bearer ' + accessToken;
+            }
+
+            try {
+                const options = { method, headers };
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(url, options);
+                let data;
+                const contentType = response.headers.get('content-type');
+
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    data = await response.text();
+                    resultDiv.textContent = data || `Status: ${response.status} ${response.statusText}`;
+                }
+
+                if (!response.ok) {
+                    resultDiv.textContent = `Error ${response.status}: ` + resultDiv.textContent;
+                }
+            } catch (error) {
+                resultDiv.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        // Bind button click events
+        document.getElementById('btn-clock-in').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            apiCall('POST', `/api/v1/time-entries/clock-in/${empId}`, null, 'clock-result');
+        });
+
+        document.getElementById('btn-clock-out').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            apiCall('POST', `/api/v1/time-entries/clock-out/${empId}`, null, 'clock-result');
+        });
+
+        document.getElementById('btn-current').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            apiCall('GET', `/api/v1/time-entries/current/${empId}`, null, 'current-result');
+        });
+
+        document.getElementById('btn-history').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            apiCall('GET', `/api/v1/time-entries/employee/${empId}`, null, 'history-result');
+        });
+
+        document.getElementById('btn-all-entries').addEventListener('click', () => {
+            apiCall('GET', '/api/v1/time-entries', null, 'all-entries-result');
+        });
+
+        document.getElementById('btn-delete').addEventListener('click', () => {
+            const entryId = document.getElementById('deleteEntryId').value;
+            if (confirm('Are you sure you want to delete this entry?')) {
+                apiCall('DELETE', `/api/v1/time-entries/${entryId}`, null, 'delete-result');
+            }
+        });
+
+        document.getElementById('btn-set-rate').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            const hourlyRate = parseFloat(document.getElementById('hourlyRate').value);
+            const effectiveDate = document.getElementById('effectiveDate').value;
+            apiCall('POST', `/api/v1/pay-rates/${empId}`, { hourlyRate, effectiveDate }, 'set-rate-result');
+        });
+
+        document.getElementById('btn-current-rate').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            apiCall('GET', `/api/v1/pay-rates/${empId}/current`, null, 'current-rate-result');
+        });
+
+        document.getElementById('btn-rate-history').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            apiCall('GET', `/api/v1/pay-rates/${empId}/history`, null, 'rate-history-result');
+        });
+    </script>
+</body>
+</html>
