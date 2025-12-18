@@ -114,8 +114,12 @@
     </div>
 
     <div class="card">
-        <label for="employeeId">Employee ID (used for all requests below)</label>
-        <input type="text" id="employeeId" name="employeeId" value="emp-001" placeholder="Enter employee ID">
+        <label for="employeeId">Employee ID - UUID format (used for all requests below)</label>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="employeeId" name="employeeId" value="550e8400-e29b-41d4-a716-446655440001" placeholder="e.g., 550e8400-e29b-41d4-a716-446655440001" style="flex: 1; margin-bottom: 0;">
+            <button type="button" onclick="generateUUID()" style="white-space: nowrap;">Generate UUID</button>
+        </div>
+        <div id="uuid-validation" style="font-size: 12px; margin-top: 5px; color: #666;">UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</div>
     </div>
 
     <h2>Time Entries</h2>
@@ -149,8 +153,8 @@
 
     <div class="card">
         <h3>Delete Time Entry (Admin)</h3>
-        <label for="deleteEntryId">Time Entry ID to Delete</label>
-        <input type="text" id="deleteEntryId" placeholder="Enter time entry ID">
+        <label for="deleteEntryId">Time Entry ID to Delete (UUID)</label>
+        <input type="text" id="deleteEntryId" placeholder="e.g., 550e8400-e29b-41d4-a716-446655440001">
         <button class="danger" id="btn-delete">Delete Entry</button>
         <div id="delete-result" class="result">Response will appear here...</div>
     </div>
@@ -159,19 +163,72 @@
     <h2>Simulate RabbitMQ Events (Local Profile Only)</h2>
 
     <div class="card">
-        <h3>Simulate Employee Deleted</h3>
-        <p style="color: #666; font-size: 13px;">Soft deletes all time entries and pay rates for the employee</p>
-        <button class="danger" id="btn-simulate-deleted">Simulate Employee Deleted</button>
-        <div id="simulate-deleted-result" class="result">Response will appear here...</div>
+        <h3>Simulate Employee Created</h3>
+        <p style="color: #666; font-size: 13px;">Creates a new employee with pay rate (as if received from HR system)</p>
+        <div class="flex">
+            <div>
+                <label for="createName">Name</label>
+                <input type="text" id="createName" placeholder="e.g., John" value="John">
+            </div>
+            <div>
+                <label for="createSurname">Surname</label>
+                <input type="text" id="createSurname" placeholder="e.g., Doe" value="Doe">
+            </div>
+        </div>
+        <div class="flex">
+            <div>
+                <label for="createHourlyWage">Hourly Wage (cents)</label>
+                <input type="number" id="createHourlyWage" placeholder="e.g., 2500" value="2500">
+            </div>
+            <div>
+                <label for="createRole">Role</label>
+                <select id="createRole">
+                    <option value="EMPLOYEE">EMPLOYEE</option>
+                    <option value="MANAGER">MANAGER</option>
+                    <option value="ADMIN">ADMIN</option>
+                </select>
+            </div>
+        </div>
+        <button class="success" id="btn-simulate-created">Simulate Employee Created</button>
+        <div id="simulate-created-result" class="result">Response will appear here...</div>
     </div>
 
     <div class="card">
         <h3>Simulate Employee Updated</h3>
-        <p style="color: #666; font-size: 13px;">Updates the employee's pay rate (as if received from HR system)</p>
-        <label for="simulateHourlyWage">New Hourly Wage</label>
-        <input type="number" id="simulateHourlyWage" step="0.01" placeholder="e.g., 30.00" value="30.00">
+        <p style="color: #666; font-size: 13px;">Updates the employee's data (as if received from HR system)</p>
+        <div class="flex">
+            <div>
+                <label for="updateName">Name</label>
+                <input type="text" id="updateName" placeholder="e.g., John" value="John">
+            </div>
+            <div>
+                <label for="updateSurname">Surname</label>
+                <input type="text" id="updateSurname" placeholder="e.g., Doe" value="Doe">
+            </div>
+        </div>
+        <div class="flex">
+            <div>
+                <label for="updateHourlyWage">Hourly Wage (cents)</label>
+                <input type="number" id="updateHourlyWage" placeholder="e.g., 3000" value="3000">
+            </div>
+            <div>
+                <label for="updateRole">Role</label>
+                <select id="updateRole">
+                    <option value="EMPLOYEE">EMPLOYEE</option>
+                    <option value="MANAGER">MANAGER</option>
+                    <option value="ADMIN">ADMIN</option>
+                </select>
+            </div>
+        </div>
         <button class="warning" id="btn-simulate-updated">Simulate Employee Updated</button>
         <div id="simulate-updated-result" class="result">Response will appear here...</div>
+    </div>
+
+    <div class="card">
+        <h3>Simulate Employee Deleted</h3>
+        <p style="color: #666; font-size: 13px;">Soft deletes all time entries and pay rates for the employee</p>
+        <button class="danger" id="btn-simulate-deleted">Simulate Employee Deleted</button>
+        <div id="simulate-deleted-result" class="result">Response will appear here...</div>
     </div>
 
     <hr>
@@ -209,6 +266,51 @@
         let refreshTokenValue = null;
         let tokenExpiry = null;
         let authMode = 'none';
+
+        // UUID validation regex
+        const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+        // Generate a random UUID v4
+        function generateUUID() {
+            const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+            document.getElementById('employeeId').value = uuid;
+            validateUUID();
+        }
+
+        // Validate UUID format and update UI
+        function validateUUID() {
+            const input = document.getElementById('employeeId');
+            const validationDiv = document.getElementById('uuid-validation');
+            const value = input.value.trim();
+
+            if (!value) {
+                validationDiv.style.color = '#666';
+                validationDiv.textContent = 'UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+                return false;
+            }
+
+            if (UUID_REGEX.test(value)) {
+                validationDiv.style.color = '#28a745';
+                validationDiv.textContent = 'Valid UUID format';
+                return true;
+            } else {
+                validationDiv.style.color = '#dc3545';
+                validationDiv.textContent = 'Invalid UUID format - must be: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+                return false;
+            }
+        }
+
+        // Add input listener for real-time validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const employeeIdInput = document.getElementById('employeeId');
+            employeeIdInput.addEventListener('input', validateUUID);
+            // Initial validation
+            validateUUID();
+        });
 
         // Toggle auth mode
         function setAuthMode(mode) {
@@ -441,17 +543,35 @@
             apiCall('GET', `/api/v1/pay-rates/${empId}/history`, null, 'rate-history-result');
         });
 
+        document.getElementById('btn-simulate-created').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            const employeeDto = {
+                id: empId,
+                name: document.getElementById('createName').value,
+                surname: document.getElementById('createSurname').value,
+                hourlyWage: parseInt(document.getElementById('createHourlyWage').value) || null,
+                role: document.getElementById('createRole').value
+            };
+            apiCall('POST', '/api/v1/test/events/employee-created', employeeDto, 'simulate-created-result');
+        });
+
+        document.getElementById('btn-simulate-updated').addEventListener('click', () => {
+            const empId = document.getElementById('employeeId').value;
+            const employeeDto = {
+                id: empId,
+                name: document.getElementById('updateName').value,
+                surname: document.getElementById('updateSurname').value,
+                hourlyWage: parseInt(document.getElementById('updateHourlyWage').value) || null,
+                role: document.getElementById('updateRole').value
+            };
+            apiCall('POST', '/api/v1/test/events/employee-updated', employeeDto, 'simulate-updated-result');
+        });
+
         document.getElementById('btn-simulate-deleted').addEventListener('click', () => {
             const empId = document.getElementById('employeeId').value;
             if (confirm(`Are you sure you want to simulate deletion of employee ${empId}? This will soft-delete all their time entries and pay rates.`)) {
                 apiCall('POST', `/api/v1/test/events/employee-deleted/${empId}`, null, 'simulate-deleted-result');
             }
-        });
-
-        document.getElementById('btn-simulate-updated').addEventListener('click', () => {
-            const empId = document.getElementById('employeeId').value;
-            const hourlyWage = document.getElementById('simulateHourlyWage').value;
-            apiCall('POST', `/api/v1/test/events/employee-updated/${empId}?hourlyWage=${hourlyWage}`, null, 'simulate-updated-result');
         });
 
         // Database viewer
