@@ -1,0 +1,50 @@
+services:
+  zeiterfassung:
+    build: .
+    container_name: zeiterfassung-app
+    ports:
+      - "8081:8081"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+      - DATABASE_PATH=/app/data/zeiterfassung.db
+    volumes:
+      # SQLite-Datenbank persistieren
+      - zeiterfassung-data:/app/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - zeiterfassung-network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: zeiterfassung-rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zeiterfassung-network
+    restart: unless-stopped
+
+networks:
+  zeiterfassung-network:
+    driver: bridge
+
+volumes:
+  zeiterfassung-data:
+  rabbitmq-data:
