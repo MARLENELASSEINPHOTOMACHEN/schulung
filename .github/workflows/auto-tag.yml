@@ -3,7 +3,7 @@ name: Auto Tag on Merge to master
 on:
   pull_request:
     types: [closed]
-    branches: [master]
+    branches: [main]
 
 permissions:
   contents: write
