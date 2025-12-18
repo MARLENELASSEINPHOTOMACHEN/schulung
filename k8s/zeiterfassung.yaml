@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeiterfassung
+  namespace: zeiterfassung
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zeiterfassung
+  template:
+    metadata:
+      labels:
+        app: zeiterfassung
+    spec:
+      containers:
+        - name: zeiterfassung
+          image: zeiterfassung:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8081
+          env:
+            - name: RABBITMQ_HOST
+              value: rabbitmq
+            - name: RABBITMQ_PORT
+              value: "5672"
+            - name: RABBITMQ_USERNAME
+              value: guest
+            - name: RABBITMQ_PASSWORD
+              value: guest
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeiterfassung
+  namespace: zeiterfassung
+spec:
+  selector:
+    app: zeiterfassung
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
