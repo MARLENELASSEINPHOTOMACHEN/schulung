@@ -1,0 +1,27 @@
+# Build output
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Local database
+*.db
+
+# Documentation
+*.md
+!README.md
+
+# Docker files (not needed in build context)
+docker-compose.yml
+Dockerfile
+
+# Maven wrapper (using container's Maven)
+.mvn/
+mvnw
+mvnw.cmd
