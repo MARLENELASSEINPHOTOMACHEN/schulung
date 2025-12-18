@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -18,14 +19,20 @@ public class EmployeeEventListener {
     private final TimeEntryService timeEntryService;
 
     @RabbitListener(queues = RabbitMQConfig.EMPLOYEE_CREATED_QUEUE)
-    public void handleEmployeeCreated(UUID employeeId) {
-        log.info("Employee created: {}", employeeId);
+    public void handleEmployeeCreated(EmployeeDto employee) {
+        log.info("Employee created: {} {} ({})", employee.name(), employee.surname(), employee.id());
+        if (employee.hourlyWage() != null) {
+            payRateService.setPayRate(employee.id(), BigDecimal.valueOf(employee.hourlyWage()), LocalDate.now());
+        }
     }
 
     @RabbitListener(queues = RabbitMQConfig.EMPLOYEE_UPDATED_QUEUE)
-    public void handleEmployeeUpdated(EmployeeUpdatedEvent event) {
-        log.info("Employee updated: {} with hourly wage {}", event.employeeId(), event.hourlyWage());
-        payRateService.setPayRate(event.employeeId(), event.hourlyWage(), LocalDate.now());
+    public void handleEmployeeUpdated(EmployeeDto employee) {
+        log.info("Employee updated: {} {} ({}) with hourly wage {}",
+                employee.name(), employee.surname(), employee.id(), employee.hourlyWage());
+        if (employee.hourlyWage() != null) {
+            payRateService.setPayRate(employee.id(), BigDecimal.valueOf(employee.hourlyWage()), LocalDate.now());
+        }
     }
 
     @RabbitListener(queues = RabbitMQConfig.EMPLOYEE_DELETED_QUEUE)
