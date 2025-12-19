@@ -1,0 +1,32 @@
+# Zeiterfassung Application
+zeiterfassung:
+  replicaCount: 1
+  image:
+    repository: zeiterfassung
+    tag: latest
+    pullPolicy: Never
+  service:
+    port: 8081
+  ingress:
+    enabled: true
+    host: zeiterfassung.minikube.local
+
+# RabbitMQ
+rabbitmq:
+  replicaCount: 1
+  image:
+    repository: rabbitmq
+    tag: 3-management
+  service:
+    amqpPort: 5672
+    managementPort: 15672
+  auth:
+    username: guest
+    password: guest
+  ingress:
+    enabled: true
+    host: rabbitmq.minikube.local
+
+# Ingress settings
+ingress:
+  className: nginx

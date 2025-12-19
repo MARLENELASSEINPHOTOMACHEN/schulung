@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeiterfassung
+  labels:
+    {{- include "zeiterfassung.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "zeiterfassung.selectorLabels" . | nindent 4 }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.zeiterfassung.service.port }}
+      targetPort: {{ .Values.zeiterfassung.service.port }}

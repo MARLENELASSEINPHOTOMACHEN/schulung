@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeiterfassung
+  labels:
+    {{- include "zeiterfassung.labels" . | nindent 4 }}
+    {{- include "zeiterfassung.selectorLabels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.zeiterfassung.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "zeiterfassung.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "zeiterfassung.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: zeiterfassung
+          image: "{{ .Values.zeiterfassung.image.repository }}:{{ .Values.zeiterfassung.image.tag }}"
+          imagePullPolicy: {{ .Values.zeiterfassung.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.zeiterfassung.service.port }}
+          env:
+            - name: RABBITMQ_HOST
+              value: rabbitmq
+            - name: RABBITMQ_PORT
+              value: "{{ .Values.rabbitmq.service.amqpPort }}"
+            - name: RABBITMQ_USERNAME
+              value: {{ .Values.rabbitmq.auth.username }}
+            - name: RABBITMQ_PASSWORD
+              value: {{ .Values.rabbitmq.auth.password }}
